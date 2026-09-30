@@ -123,6 +123,14 @@ function App() {
     }
   }
 
+  // Calculate real-time status strictly based on the 30-second timeout window
+  const getDeviceStatus = (dev) => {
+    if (!dev.last_heartbeat) return 'OFFLINE'
+    const hbDate = new Date(dev.last_heartbeat)
+    const elapsedSeconds = Math.max(0, Math.floor((currentTime - hbDate) / 1000))
+    return elapsedSeconds <= 30 ? 'ONLINE' : 'OFFLINE'
+  }
+
   // Calculate elapsed time and countdown strictly from EACH individual device's own lastHeartbeat
   const formatHeartbeatInfo = (lastHeartbeat) => {
     if (!lastHeartbeat) {
@@ -153,22 +161,31 @@ function App() {
     }
   }
 
-  // Filter and search
-  const filteredDevices = devices.filter((dev) => {
-    const matchesFilter =
-      filter === 'ALL' ||
-      (filter === 'ONLINE' && dev.status === 'ONLINE') ||
-      (filter === 'OFFLINE' && dev.status === 'OFFLINE')
-
-    const matchesSearch =
-      dev.id.toLowerCase().includes(search.toLowerCase()) ||
-      dev.name.toLowerCase().includes(search.toLowerCase())
-
-    return matchesFilter && matchesSearch
-  })
-
+  // Derive real-time metrics dynamically every second
+  const computedOnline = devices.filter((d) => getDeviceStatus(d) === 'ONLINE').length
+  const computedOffline = devices.length - computedOnline
+  const computedTotal = devices.length
   const healthPercent =
-    summary.total > 0 ? Math.round((summary.online / summary.total) * 100) : 0
+    computedTotal > 0 ? Math.round((computedOnline / computedTotal) * 100) : 0
+
+  // Filter and search using live real-time status
+  const filteredDevices = devices
+    .map((dev) => ({
+      ...dev,
+      currentStatus: getDeviceStatus(dev)
+    }))
+    .filter((dev) => {
+      const matchesFilter =
+        filter === 'ALL' ||
+        (filter === 'ONLINE' && dev.currentStatus === 'ONLINE') ||
+        (filter === 'OFFLINE' && dev.currentStatus === 'OFFLINE')
+
+      const matchesSearch =
+        dev.id.toLowerCase().includes(search.toLowerCase()) ||
+        dev.name.toLowerCase().includes(search.toLowerCase())
+
+      return matchesFilter && matchesSearch
+    })
 
   return (
     <div className="dashboard-container">
@@ -210,7 +227,7 @@ function App() {
       <div className="metrics-grid">
         <div className="metric-card total">
           <div className="metric-label">Total Devices</div>
-          <div className="metric-value">{summary.total}</div>
+          <div className="metric-value">{computedTotal}</div>
           <div className="metric-sub">Registered in fleet map</div>
         </div>
 
@@ -220,7 +237,7 @@ function App() {
             <span className="pulsing-dot online" />
           </div>
           <div className="metric-value">
-            {summary.online}
+            {computedOnline}
           </div>
           <div className="metric-sub">Heartbeat within ≤ 30s</div>
         </div>
@@ -231,7 +248,7 @@ function App() {
             <span className="pulsing-dot offline" />
           </div>
           <div className="metric-value">
-            {summary.offline}
+            {computedOffline}
           </div>
           <div className="metric-sub">No heartbeat for &gt; 30s</div>
         </div>
@@ -242,7 +259,7 @@ function App() {
             {healthPercent}%
           </div>
           <div className="metric-sub">
-            {summary.online} of {summary.total} operational
+            {computedOnline} of {computedTotal} operational
           </div>
         </div>
       </div>
@@ -258,19 +275,19 @@ function App() {
                 className={`filter-btn ${filter === 'ALL' ? 'active' : ''}`}
                 onClick={() => setFilter('ALL')}
               >
-                All ({devices.length})
+                All ({computedTotal})
               </button>
               <button
                 className={`filter-btn ${filter === 'ONLINE' ? 'active' : ''}`}
                 onClick={() => setFilter('ONLINE')}
               >
-                Online ({summary.online})
+                Online ({computedOnline})
               </button>
               <button
                 className={`filter-btn ${filter === 'OFFLINE' ? 'active' : ''}`}
                 onClick={() => setFilter('OFFLINE')}
               >
-                Offline ({summary.offline})
+                Offline ({computedOffline})
               </button>
             </div>
 
@@ -306,7 +323,7 @@ function App() {
               </thead>
               <tbody>
               {filteredDevices.map((dev) => {
-                const isOnline = dev.status === 'ONLINE'
+                const isOnline = dev.currentStatus === 'ONLINE'
                 const { timestampFormatted, elapsedText, countdownText } = formatHeartbeatInfo(dev.last_heartbeat)
 
                 return (
@@ -320,7 +337,7 @@ function App() {
                     <td>
                       <span className={`badge ${isOnline ? 'badge-online' : 'badge-offline'}`}>
                         <span className={`pulsing-dot ${isOnline ? 'online' : 'offline'}`} />
-                        {dev.status}
+                        {dev.currentStatus}
                       </span>
                     </td>
                     <td>

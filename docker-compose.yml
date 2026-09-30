@@ -1,0 +1,12 @@
+services:
+  fleet-monitor:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: mini-device-fleet-monitor
+    ports:
+      - "9090:8840" # Maps localhost:9090 to container port 8840 (Change 9090 to any port you like)
+    environment:
+      - PORT=8840
+      - HEARTBEAT_TIMEOUT=30s
+    restart: unless-stopped

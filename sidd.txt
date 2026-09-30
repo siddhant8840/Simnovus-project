@@ -1,0 +1,8 @@
+# 1. Start backend server on Port 9090
+$env:PORT="9090"; go run ./cmd/server
+
+# 2. In a second terminal, start simulator pointing to Port 9090
+go run ./cmd/simulator -server=http://localhost:9090
+
+# 3. Open in Browser
+# http://localhost:9090/

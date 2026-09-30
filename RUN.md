@@ -14,6 +14,38 @@ This guide provides simple, step-by-step instructions to run the **Go Backend**,
 
 ## 🚀 Quick Start (Fastest Way)
 
+### Run Frontend and Backend with Docker
+
+From the project root, build the image:
+
+```bash
+docker build -t fleet-monitor .
+```
+
+#### Run on standard container port (`8840`):
+```bash
+docker run --rm -p 8840:8840 fleet-monitor
+```
+
+#### Run on **any other port** (e.g. port `9090`, `8000`, `3000`):
+You can map any host port to the container using `-p <HOST_PORT>:8840`:
+```bash
+# Run on Port 9090
+docker run --rm -p 9090:8840 fleet-monitor
+
+# Run on Port 8000
+docker run --rm -p 8000:8840 fleet-monitor
+
+# Or change the internal container port using the PORT environment variable
+docker run --rm -e PORT=9090 -p 9090:9090 fleet-monitor
+```
+
+#### Or use Docker Compose:
+```bash
+docker compose up
+```
+*(By default, [docker-compose.yml](file:///c:/Users/HP/Desktop/EXAM/docker-compose.yml) serves on port `9090`).*
+
 ### Step 1: Start the Backend Server
 Open a terminal in the project root (`EXAM/`) and run:
 
