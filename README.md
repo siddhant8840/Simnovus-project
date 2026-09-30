@@ -124,27 +124,46 @@ go run ./cmd/simulator
 
 ---
 
-### Option 3: Run with Docker & Docker Compose
+### Option 3: Run with Docker & Docker Hub
 
-If you have Docker Desktop installed and running:
+#### 🐳 Pull and Run from Docker Hub (No build required!)
 
-#### Using Docker Compose (Runs on Port 9090):
+Docker Hub Image:
+👉 **[https://hub.docker.com/r/siddhant8840/simnovus-project](https://hub.docker.com/r/siddhant8840/simnovus-project)**
+
+```bash
+# 1. Pull the pre-built image from Docker Hub
+docker pull siddhant8840/simnovus-project:latest
+
+# 2. Run the container mapped to port 8080 (or 9090):
+docker run --rm -p 8080:8080 siddhant8840/simnovus-project:latest
+
+# (Or run on port 9090):
+docker run --rm -p 9090:8080 siddhant8840/simnovus-project:latest
+```
+
+Open **[http://localhost:8080/](http://localhost:8080/)** in your browser.
+
+---
+
+#### 🛠️ Build and Run Locally with Docker / Docker Compose
+
+If you want to build locally from source:
+
+##### Using Docker Compose:
 ```bash
 docker compose up
 ```
+*(Runs automatically on [http://localhost:9090](http://localhost:9090))*
 
-#### Using Docker CLI:
+##### Using Docker CLI:
 ```bash
-# 1. Build the container image:
+# 1. Build the container image locally:
 docker build -t fleet-monitor .
 
-# 2. Run container mapped to port 9090:
-docker run --rm -p 9090:8840 fleet-monitor
-
-# (Or run on any other port like 8840, 8080, 5000):
-docker run --rm -p 8840:8840 fleet-monitor
+# 2. Run container mapped to port 8080:
+docker run --rm -p 8080:8080 fleet-monitor
 ```
-Open **[http://localhost:9090/](http://localhost:9090/)** in your browser.
 
 ---
 

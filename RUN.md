@@ -14,30 +14,33 @@ This guide provides simple, step-by-step instructions to run the **Go Backend**,
 
 ## 🚀 Quick Start (Fastest Way)
 
-### Run Frontend and Backend with Docker
+### 🐳 Run Pre-Built Image from Docker Hub (No build required)
 
-From the project root, build the image:
+Docker Hub Image:
+👉 **[https://hub.docker.com/r/siddhant8840/simnovus-project](https://hub.docker.com/r/siddhant8840/simnovus-project)**
+
+```bash
+# 1. Pull latest image from Docker Hub
+docker pull siddhant8840/simnovus-project:latest
+
+# 2. Run container
+docker run --rm -p 8080:8080 siddhant8840/simnovus-project:latest
+```
+Open **[http://localhost:8080/](http://localhost:8080/)** in your browser.
+
+---
+
+### 🛠️ Build and Run Locally with Docker
+
+From the project root, build the image locally:
 
 ```bash
 docker build -t fleet-monitor .
 ```
 
-#### Run on standard container port (`8840`):
+#### Run on port `8080` (or `9090` / `8840`):
 ```bash
-docker run --rm -p 8840:8840 fleet-monitor
-```
-
-#### Run on **any other port** (e.g. port `9090`, `8000`, `3000`):
-You can map any host port to the container using `-p <HOST_PORT>:8840`:
-```bash
-# Run on Port 9090
-docker run --rm -p 9090:8840 fleet-monitor
-
-# Run on Port 8000
-docker run --rm -p 8000:8840 fleet-monitor
-
-# Or change the internal container port using the PORT environment variable
-docker run --rm -e PORT=9090 -p 9090:9090 fleet-monitor
+docker run --rm -p 8080:8080 fleet-monitor
 ```
 
 #### Or use Docker Compose:
