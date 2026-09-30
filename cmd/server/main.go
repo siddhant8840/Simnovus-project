@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"syscall"
 	"time"
 
@@ -70,6 +71,21 @@ func main() {
 
 	mux := http.NewServeMux()
 	handler.RegisterRoutes(mux)
+
+	// Serve built React frontend from frontend/dist if available
+	distDir := filepath.Join("frontend", "dist")
+	if info, err := os.Stat(distDir); err == nil && info.IsDir() {
+		distFS := http.FileServer(http.Dir(distDir))
+		mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+			target := filepath.Join(distDir, filepath.Clean(r.URL.Path))
+			if fInfo, err := os.Stat(target); err == nil && !fInfo.IsDir() {
+				distFS.ServeHTTP(w, r)
+				return
+			}
+			http.ServeFile(w, r, filepath.Join(distDir, "index.html"))
+		})
+		slog.Info("Serving React frontend from frontend/dist", "path", distDir)
+	}
 
 	serverAddr := ":" + cfg.Port
 	srv := &http.Server{

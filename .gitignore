@@ -19,3 +19,7 @@ bin/
 # OS files
 .DS_Store
 Thumbs.db
+
+# Frontend dependencies
+frontend/node_modules/
+

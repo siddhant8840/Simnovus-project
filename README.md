@@ -133,6 +133,22 @@ PORT=9000 HEARTBEAT_TIMEOUT=45s go run ./cmd/server
 $env:PORT="9000"; $env:HEARTBEAT_TIMEOUT="45s"; go run ./cmd/server
 ```
 
+### Accessing the React Web Frontend
+Once the server is running, open your web browser to:
+```
+http://localhost:8080/
+```
+The React frontend is pre-built into `frontend/dist` and served directly by the Go backend!
+
+#### Running React in Development Mode (Vite)
+If you wish to run the React frontend independently with Hot Module Reloading (HMR):
+```bash
+cd frontend
+npm install
+npm run dev
+```
+Then visit `http://localhost:5173/` (Vite automatically proxies API requests to Go on `:8080`).
+
 ---
 
 ## 6. How to Run the Simulator
