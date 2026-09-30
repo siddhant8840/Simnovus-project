@@ -87,7 +87,7 @@ function App() {
     }
   }
 
-  // Handle manual heartbeat trigger
+  // Handle manual heartbeat trigger for a single device
   const handleSendHeartbeat = async (id) => {
     try {
       const payload = {
@@ -104,31 +104,50 @@ function App() {
       })
 
       if (res.ok) {
-        fetchData()
+        const updatedDev = await res.json()
+        // Crucial: Update ONLY this clicked device in state.
+        // All other devices preserve their independent, untouched last_heartbeat timestamps!
+        setDevices((prevDevices) =>
+          prevDevices.map((d) => (d.id === id ? updatedDev : d))
+        )
+
+        // Refresh fleet summary counts
+        const sumRes = await fetch('/summary')
+        if (sumRes.ok) {
+          const sumData = await sumRes.json()
+          setSummary(sumData)
+        }
       }
     } catch (err) {
       console.error('Error sending heartbeat:', err)
     }
   }
 
-  // Calculate elapsed time and remaining seconds before timeout (30s)
+  // Calculate elapsed time and countdown strictly from EACH individual device's own lastHeartbeat
   const formatHeartbeatInfo = (lastHeartbeat) => {
     if (!lastHeartbeat) {
-      return { elapsedText: 'Never received', countdownText: 'OFFLINE' }
+      return {
+        timestampFormatted: '—',
+        elapsedText: 'Never received',
+        countdownText: 'OFFLINE'
+      }
     }
 
     const hbDate = new Date(lastHeartbeat)
     const elapsedSeconds = Math.max(0, Math.floor((currentTime - hbDate) / 1000))
+    const timestampFormatted = hbDate.toLocaleTimeString([], { hour12: false })
 
     if (elapsedSeconds <= 30) {
       const remaining = 30 - elapsedSeconds
       return {
-        elapsedText: `${elapsedSeconds}s ago`,
+        timestampFormatted,
+        elapsedText: elapsedSeconds === 0 ? '0s ago (Just now)' : `${elapsedSeconds}s ago`,
         countdownText: `${remaining}s until timeout`
       }
     }
 
     return {
+      timestampFormatted,
       elapsedText: `${elapsedSeconds}s ago`,
       countdownText: 'Timeout expired (>30s)'
     }
@@ -200,7 +219,7 @@ function App() {
             Online Devices
             <span className="pulsing-dot online" />
           </div>
-          <div className="metric-value" style={{ color: '#34d399' }}>
+          <div className="metric-value">
             {summary.online}
           </div>
           <div className="metric-sub">Heartbeat within ≤ 30s</div>
@@ -211,7 +230,7 @@ function App() {
             Offline Devices
             <span className="pulsing-dot offline" />
           </div>
-          <div className="metric-value" style={{ color: '#fb7185' }}>
+          <div className="metric-value">
             {summary.offline}
           </div>
           <div className="metric-sub">No heartbeat for &gt; 30s</div>
@@ -219,7 +238,7 @@ function App() {
 
         <div className="metric-card health">
           <div className="metric-label">Fleet Availability</div>
-          <div className="metric-value" style={{ color: '#c084fc' }}>
+          <div className="metric-value">
             {healthPercent}%
           </div>
           <div className="metric-sub">
@@ -233,7 +252,7 @@ function App() {
         <div className="table-header-bar">
           <div className="table-title">Fleet Devices ({filteredDevices.length})</div>
 
-          <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
+          <div className="table-controls">
             <div className="filter-group">
               <button
                 className={`filter-btn ${filter === 'ALL' ? 'active' : ''}`}
@@ -273,20 +292,22 @@ function App() {
             </p>
           </div>
         ) : (
-          <table className="device-table">
-            <thead>
+          <div className="table-scroll">
+            <table className="device-table">
+              <thead>
               <tr>
                 <th>Device ID</th>
                 <th>Device Name</th>
                 <th>Status</th>
-                <th>Last Heartbeat</th>
+                <th>Backend Timestamp</th>
+                <th>Elapsed (30s Window)</th>
                 <th>Actions</th>
               </tr>
-            </thead>
-            <tbody>
+              </thead>
+              <tbody>
               {filteredDevices.map((dev) => {
                 const isOnline = dev.status === 'ONLINE'
-                const { elapsedText, countdownText } = formatHeartbeatInfo(dev.last_heartbeat)
+                const { timestampFormatted, elapsedText, countdownText } = formatHeartbeatInfo(dev.last_heartbeat)
 
                 return (
                   <tr key={dev.id}>
@@ -300,6 +321,11 @@ function App() {
                       <span className={`badge ${isOnline ? 'badge-online' : 'badge-offline'}`}>
                         <span className={`pulsing-dot ${isOnline ? 'online' : 'offline'}`} />
                         {dev.status}
+                      </span>
+                    </td>
+                    <td>
+                      <span style={{ fontFamily: 'var(--font-mono)', color: '#93c5fd', fontSize: '0.85rem' }}>
+                        {timestampFormatted}
                       </span>
                     </td>
                     <td>
@@ -318,8 +344,9 @@ function App() {
                   </tr>
                 )
               })}
-            </tbody>
-          </table>
+              </tbody>
+            </table>
+          </div>
         )}
       </div>
 
@@ -335,16 +362,7 @@ function App() {
             </div>
 
             {errorMsg && (
-              <div
-                style={{
-                  background: 'rgba(244, 63, 94, 0.1)',
-                  color: '#fb7185',
-                  padding: '0.5rem 0.75rem',
-                  borderRadius: '6px',
-                  marginBottom: '1rem',
-                  fontSize: '0.85rem'
-                }}
-              >
+              <div className="form-error">
                 {errorMsg}
               </div>
             )}

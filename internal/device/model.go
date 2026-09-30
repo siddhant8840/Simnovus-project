@@ -70,7 +70,8 @@ func (d Device) ToResponse(now time.Time, timeout time.Duration) DeviceResponse 
 		Status: CalculateStatus(d.LastHeartbeat, now, timeout),
 	}
 	if !d.LastHeartbeat.IsZero() {
-		resp.LastHeartbeat = &d.LastHeartbeat
+		hbCopy := d.LastHeartbeat
+		resp.LastHeartbeat = &hbCopy
 	}
 	return resp
 }

@@ -76,7 +76,7 @@ func (s *Simulator) RegisterDevice(id, name string) error {
 }
 
 // StartDevice initiates a background goroutine sending heartbeats periodically.
-func (s *Simulator) StartDevice(id string) bool {
+func (s *Simulator) StartDevice(id string, startDelay time.Duration) bool {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -88,8 +88,12 @@ func (s *Simulator) StartDevice(id string) bool {
 	ctx, cancel := context.WithCancel(context.Background())
 	s.devices[id] = cancel
 
-	go s.heartbeatLoop(ctx, id)
-	slog.Info("Started heartbeats for device", "id", id, "interval", s.interval.String())
+	go s.heartbeatLoop(ctx, id, startDelay)
+	if startDelay > 0 {
+		slog.Info("Scheduled device heartbeats", "id", id, "interval", s.interval.String(), "initial_delay", startDelay.String())
+	} else {
+		slog.Info("Started heartbeats for device", "id", id, "interval", s.interval.String())
+	}
 	return true
 }
 
@@ -110,11 +114,19 @@ func (s *Simulator) StopDevice(id string) bool {
 	return true
 }
 
-func (s *Simulator) heartbeatLoop(ctx context.Context, id string) {
+func (s *Simulator) heartbeatLoop(ctx context.Context, id string, startDelay time.Duration) {
+	if startDelay > 0 {
+		select {
+		case <-ctx.Done():
+			return
+		case <-time.After(startDelay):
+		}
+	}
+
 	ticker := time.NewTicker(s.interval)
 	defer ticker.Stop()
 
-	// Send an immediate initial heartbeat
+	// Send an immediate heartbeat for this device after its offset
 	s.sendHeartbeat(id)
 
 	for {
@@ -177,7 +189,8 @@ func main() {
 
 	sim := NewSimulator(*serverURL, *interval)
 
-	// Step 1: Register and start simulated devices
+	// Step 1: Register and start simulated devices with staggered offsets
+	// This ensures each device has an independent heartbeat cadence and timestamp
 	for i := 1; i <= *count; i++ {
 		id := fmt.Sprintf("device-%02d", i)
 		name := fmt.Sprintf("Lab Sensor %02d", i)
@@ -185,7 +198,9 @@ func main() {
 		if err := sim.RegisterDevice(id, name); err != nil {
 			slog.Error("Could not register device", "id", id, "error", err)
 		}
-		sim.StartDevice(id)
+		// Stagger device start across the interval window (e.g. 0s, 1s, 2s, 3s, 4s)
+		staggerDelay := time.Duration(i-1) * (*interval / time.Duration(*count))
+		sim.StartDevice(id, staggerDelay)
 	}
 
 	// Step 2: If a target stop device was supplied via CLI flag, stop it
@@ -228,7 +243,7 @@ func main() {
 						fmt.Println("Usage: start <device-id>")
 						continue
 					}
-					sim.StartDevice(parts[1])
+					sim.StartDevice(parts[1], 0)
 				case "help":
 					fmt.Println("Commands: stop <id>, start <id>, exit")
 				case "exit", "quit":
