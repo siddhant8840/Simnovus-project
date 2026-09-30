@@ -18,6 +18,35 @@ An IoT device fleet monitoring application built with **Go** (standard library c
 
 ---
 
+## 🛠️ Tech Stack
+
+### 🔹 Backend (API & Engine)
+* **Language**: [Go (Golang)](https://go.dev/) (v1.22+)
+* **HTTP Framework**: Native Go `net/http` standard library (zero external framework bloat)
+* **Concurrency & Synchronization**: Goroutines, Channels, and `sync.RWMutex` for high-throughput, thread-safe in-memory state management
+* **Automated Testing**: Go `testing` standard library with unit, concurrency, and REST integration tests (`go test -v ./...`)
+
+### 🔹 Frontend (Web Dashboard)
+* **Library / UI**: [React 18](https://react.dev/) (Hooks, `useCallback`, `useEffect`, dynamic time countdowns)
+* **Build Tool**: [Vite](https://vitejs.dev/) (Ultra-fast HMR and optimized production asset bundling)
+* **Styling & Design**: Modern Vanilla CSS3
+  * CSS Custom Properties (Theme tokens)
+  * CSS Grid & Flexbox responsive layout
+  * Glassmorphism, subtle glowing indicators, and pulsing live status dots
+* **Typography**: DM Sans, Fraunces (Display), and IBM Plex Mono (Telemetry / Timestamps)
+* **Real-time Architecture**: 2-second background polling loop synced with a 1-second dynamic client countdown ticker
+
+### 🔹 Device Simulation CLI
+* **Language**: Go (Golang)
+* **Concurrency Model**: Multi-goroutine worker architecture simulating independent IoT nodes emitting `POST` heartbeat payloads every 5 seconds
+* **Interactive Shell**: Real-time CLI terminal control (`start <id>`, `stop <id>`, `status`, `exit`)
+
+### 🔹 DevOps & Deployment
+* **Containerization**: [Docker](https://www.docker.com/) (Multi-stage build with Node.js + Go Alpine for an ultra-lightweight production image)
+* **Orchestration**: [Docker Compose](https://docs.docker.com/compose/) (Single-command orchestration configured on port `9090`)
+
+---
+
 ## 📖 Overview
 
 The **Mini Device Fleet Monitor** tracks connected IoT hardware sensors in real time. Devices continuously report their health by sending heartbeat signals with telemetry metrics.
