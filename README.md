@@ -1,247 +1,332 @@
 # 🚀 Mini Device Fleet Monitor
 
 ```powershell
-# 1. Start backend server
-go run ./cmd/server
+# 1. Start backend server (Port 9090 or 8080)
+$env:PORT="9090"; go run ./cmd/server
 
 # 2. In a second terminal, start the multi-device simulator
-go run ./cmd/simulator
+go run ./cmd/simulator -server=http://localhost:9090
 
-# 3. (Optional) Run frontend in Vite development mode
-cd frontend
-npm.cmd run dev
+# 3. Open dashboard in your browser
+# 👉 http://localhost:9090/
 ```
 
-An IoT device fleet monitoring application built with **Go** (standard library concurrency & HTTP), **React** (real-time telemetry dashboard), and **Docker**.
+An enterprise-grade, lightweight IoT device fleet monitoring and telemetry platform built with **Go** (high-concurrency standard library & HTTP), **React** (real-time telemetry dashboard with independent countdown tickers), and **Docker**.
 
 ![Mini Device Fleet Monitor Dashboard](./picture.png)
 
 ---
 
-## 🛠️ Tech Stack
+## 📌 About The Project
 
-### 🔹 Backend (API & Engine)
-* **Language**: [Go (Golang)](https://go.dev/) (v1.22+)
-* **HTTP Framework**: Native Go `net/http` standard library (zero external framework bloat)
-* **Concurrency & Synchronization**: Goroutines, Channels, and `sync.RWMutex` for high-throughput, thread-safe in-memory state management
-* **Automated Testing**: Go `testing` standard library with unit, concurrency, and REST integration tests (`go test -v ./...`)
+In real-world IoT deployments—such as smart factories, edge sensor grids, connected vehicles, and telecom base stations—hundreds or thousands of edge hardware nodes continuously communicate with central servers. Maintaining visibility into which devices are actively functioning, which have degraded or disconnected, and which have recovered is critical for operational stability.
 
-### 🔹 Frontend (Web Dashboard)
-* **Library / UI**: [React 18](https://react.dev/) (Hooks, `useCallback`, `useEffect`, dynamic time countdowns)
-* **Build Tool**: [Vite](https://vitejs.dev/) (Ultra-fast HMR and optimized production asset bundling)
-* **Styling & Design**: Modern Vanilla CSS3
-  * CSS Custom Properties (Theme tokens)
-  * CSS Grid & Flexbox responsive layout
-  * Glassmorphism, subtle glowing indicators, and pulsing live status dots
-* **Typography**: DM Sans, Fraunces (Display), and IBM Plex Mono (Telemetry / Timestamps)
-* **Real-time Architecture**: 2-second background polling loop synced with a 1-second dynamic client countdown ticker
+The **Mini Device Fleet Monitor** is an end-to-end, high-throughput fleet management system engineered to solve this problem. It ingests continuous health telemetry and heartbeat signals from simulated or physical hardware devices, calculates operational statuses on-the-fly using a deterministic **30-second sliding timeout rule**, and delivers instant visual observability through an interactive, glassmorphic React dashboard.
 
-### 🔹 Device Simulation CLI
-* **Language**: Go (Golang)
-* **Concurrency Model**: Multi-goroutine worker architecture simulating independent IoT nodes emitting `POST` heartbeat payloads every 5 seconds
-* **Interactive Shell**: Real-time CLI terminal control (`start <id>`, `stop <id>`, `status`, `exit`)
-
-### 🔹 DevOps & Deployment
-* **Containerization**: [Docker](https://www.docker.com/) (Multi-stage build with Node.js + Go Alpine for an ultra-lightweight production image)
-* **Orchestration**: [Docker Compose](https://docs.docker.com/compose/) (Single-command orchestration configured on port `9090`)
+### 🎯 Key Objectives & Problem Solved
+* **Zero-Lag Status Detection**: Instantly marks devices as `OFFLINE` if no heartbeat has been received within 30 seconds, and immediately revives them to `ONLINE` upon the arrival of fresh telemetry.
+* **Lock-Safe High Concurrency**: Eliminates race conditions across hundreds of concurrent device goroutines using Go's `sync.RWMutex`, allowing non-blocking read spikes while ensuring atomic writes.
+* **Minimalist & Zero-Bloat Footprint**: Built with pure Go standard libraries (`net/http`) without heavy third-party framework overhead, serving both the REST API and compiled web assets from a single binary or container.
+* **True Client-Side Determinism**: Every device card in the frontend dashboard computes its own elapsed duration and countdown timer independently based on UTC timestamps.
 
 ---
 
-## 📖 Overview
+## ✨ Core Features
 
-The **Mini Device Fleet Monitor** tracks connected IoT hardware sensors in real time. Devices continuously report their health by sending heartbeat signals with telemetry metrics.
+### 1. ⏱️ Dynamic 30-Second Timeout Rule Engine
+* **🟢 ONLINE ($\le 30\text{s}$)**: When a device transmits a heartbeat, it is marked **ONLINE** and an active 30-second countdown window begins.
+* **🔴 OFFLINE ($> 30\text{s}$)**: If the elapsed time since the device's last recorded heartbeat exceeds 30 seconds, its status transitions to **OFFLINE**.
+* **⚡ Instant Revival**: Transmitting a fresh heartbeat instantly revives an offline device back to **ONLINE** with zero restart required.
+* **Dynamic Evaluation**: Device statuses are evaluated dynamically at query time based on `time.Now().Sub(lastHeartbeat)`, ensuring data is always fresh and never stale.
 
-### ⏱️ The 30-Second Rule
-* **🟢 ONLINE**: A device is considered **ONLINE** if it has sent at least one heartbeat within the last **30 seconds** ($\le 30\text{s}$).
-* **🔴 OFFLINE**: If **more than 30 seconds** pass without a heartbeat, the device automatically transitions to **OFFLINE**.
-* **⚡ REVIVAL**: Sending a fresh heartbeat (via simulator or the UI **⚡ Heartbeat** button) instantly revives an offline device back to **ONLINE**.
+### 2. 🖥️ Modern React 18 Telemetry Dashboard
+* **Real-time Live Polling**: Synchronizes with the backend every 2 seconds (`2000ms`) to fetch latest fleet metrics and device statuses.
+* **Individual Live Countdown Tickers**: Client-side 1-second interval timers compute the exact seconds elapsed and time remaining before timeout for each device independently.
+* **Fleet Availability KPIs**: Displays live counts of Total Devices, Online Nodes, Offline Nodes, and an automated Fleet Availability Health Percentage ($(\text{Online} / \text{Total}) \times 100$).
+* **Instant Action Triggers**: 
+  * ⚡ **1-Click Heartbeat**: Send manual telemetry pings directly to any device to test revival and countdown resets.
+  * ➕ **Device Registration Modal**: Add new device identifiers and descriptive labels.
+  * ⚡ **1-Click Sample Generator**: Instant node creation for quick stress-testing.
+* **Search & Multi-State Filtering**: Filter by `ALL`, `ONLINE`, or `OFFLINE` statuses alongside instant text search across device IDs and names.
+* **Interactive Operations Side Panel**: Built-in tabbed guide explaining Quick Setup, Live Polling, Heartbeat Mechanics, and Backend Architecture.
+
+### 3. 🤖 Concurrent Multi-Device Simulator CLI
+* **Multi-Goroutine Node Emulation**: Automatically registers 5 default IoT sensor nodes (`device-01` to `device-05`) and launches parallel worker goroutines emitting heartbeats every 5 seconds.
+* **Interactive CLI Control Shell**:
+  * `stop <device-id>`: Temporarily halts heartbeats for a device to test the 30s timeout and observe it transition to `OFFLINE`.
+  * `start <device-id>`: Resumes heartbeats to watch the device revive back to `ONLINE`.
+  * `status`: Prints a summary table of running goroutines and active simulators.
+  * `exit`: Gracefully shuts down all workers.
+
+### 4. 🔒 Thread-Safe High-Throughput Go Architecture
+* In-memory storage backed by `sync.RWMutex`:
+  * `RLock()`: Enables high-volume concurrent reads for polling endpoints (`/summary`, `/devices`) without thread contention.
+  * `Lock()`: Guarantees atomic writes during device registration and heartbeat updates.
+* Clean internal package design separating handlers, services, repositories, and models.
+
+---
+
+## 🏗️ System Architecture & Data Flow
+
+```mermaid
+flowchart TD
+    subgraph Edge & Ingestion
+        SIM[Multi-Device Simulator CLI<br/>Goroutines 1..N] -->|POST /devices/:id/heartbeat| API[Go HTTP Server<br/>:9090 / :8080]
+        USER[User Browser Dashboard] -->|POST /devices<br/>POST /devices/:id/heartbeat| API
+    end
+
+    subgraph Backend Core Engine
+        API --> ROUTER[HTTP Router & Middleware]
+        ROUTER --> HANDLER[Device Handler]
+        HANDLER --> SERVICE[Fleet Service]
+        SERVICE --> STORE[(Thread-Safe In-Memory Store<br/>sync.RWMutex)]
+        SERVICE --> CALC{Status Evaluator<br/>Δt ≤ 30s ?}
+        CALC -->|Δt ≤ 30s| ONLINE[Status: ONLINE 🟢]
+        CALC -->|Δt > 30s| OFFLINE[Status: OFFLINE 🔴]
+    end
+
+    subgraph Frontend Observability
+        API -->|GET /devices<br/>GET /summary| DASH[React 18 Dashboard<br/>2s Polling + 1s Ticker]
+        DASH --> UI_TABLE[Telemetry Table & Countdown]
+        DASH --> UI_METRICS[Fleet Health & KPI Cards]
+    end
+```
+
+---
+
+## 🛠️ Tech Stack
+
+| Layer | Technology | Description |
+|---|---|---|
+| **Backend Engine** | **Go (Golang 1.22+)** | Native `net/http` standard library, Goroutines, Channels, `sync.RWMutex` |
+| **Testing** | **Go `testing`** | Unit tests, concurrency safety tests, race detection, HTTP integration tests |
+| **Frontend UI** | **React 18 + Vite** | Functional components, custom hooks, dynamic interval timers |
+| **Styling** | **Modern Vanilla CSS3** | Custom properties (tokens), Glassmorphism, CSS Grid, pulsing status beacons |
+| **Typography** | **Google Fonts** | DM Sans (UI), Fraunces (Headings), IBM Plex Mono (Telemetry & Timestamps) |
+| **Device Simulator** | **Go CLI** | Interactive REPL, concurrent background worker goroutines, HTTP client |
+| **DevOps** | **Docker & Compose** | Multi-stage Dockerfile (Node + Go Alpine), Docker Compose orchestration |
+| **Registry** | **Docker Hub** | Pre-built image: `siddhant8840/simnovus-project:latest` |
 
 ---
 
 ## ⚡ Quick Start (How to Run)
 
-You can run this project either **Natively using Go** or **Inside a Docker Container**.
+You can run this project via **Native Go Execution**, **Vite Frontend Dev Mode**, or **Docker Containers**.
 
-### Option 1: Native Execution with Go (Fastest)
+### Option 1: Native Go Execution (Recommended & Fastest)
 
-#### Step 1: Start the Backend Server
-Open a terminal in the project root folder and run:
+#### Step 1: Start Backend Server
+Open your terminal in the project root:
 ```powershell
 # Run on default port 8080:
 go run ./cmd/server
 
-# OR run on custom port (e.g. 9090):
+# OR specify custom port (e.g. 9090):
 $env:PORT="9090"; go run ./cmd/server
 ```
-> The Go server automatically serves both the **REST API** and the pre-compiled **React Dashboard UI**!
+> 💡 *The Go server automatically serves both the backend REST API and the bundled React frontend.*
 
 #### Step 2: Open the Web Dashboard
-Open your web browser and navigate to:
+Open your browser and navigate to:
 👉 **[http://localhost:9090/](http://localhost:9090/)** *(or `http://localhost:8080/` if using default port)*
 
-#### Step 3: Start the Multi-Device Simulator
-In a **second terminal window**, run the simulator:
+#### Step 3: Start Multi-Device Simulator
+In a **second terminal window**, launch the simulator:
 ```powershell
-# If your server is on port 9090:
+# Point to port 9090:
 go run ./cmd/simulator -server=http://localhost:9090
 
-# If your server is on port 8080:
+# Or default port 8080:
 go run ./cmd/simulator
 ```
-* The simulator automatically registers **5 devices** (`device-01` to `device-05`) and sends heartbeats every 5 seconds.
-* Watch the web dashboard — all 5 devices will turn **ONLINE** with glowing green status badges!
+* The simulator will automatically register 5 devices (`device-01` through `device-05`) and emit heartbeats every 5s.
+* All 5 devices will immediately show **ONLINE** on the dashboard with glowing status badges!
 
 ---
 
-### Option 2: Running the React Frontend in Development Mode (Vite)
+### Option 2: Run with Docker / Docker Hub
 
-> **Note:** When you start the Go server (`go run ./cmd/server`), it **already serves the pre-built React frontend** automatically.
-> However, if you want to modify UI code or run with Vite Hot Module Reloading (HMR):
-
-1. Open a terminal in the `frontend/` folder:
-   ```bash
-   cd frontend
-   ```
-2. Install dependencies (if first time):
-   ```bash
-   npm install
-   # Windows PowerShell: npm.cmd install
-   ```
-3. Start Vite dev server:
-   ```bash
-   npm run dev
-   # Windows PowerShell: npm.cmd run dev
-   ```
-4. Open your browser at:
-   👉 **[http://localhost:5173/](http://localhost:5173/)**
-   *(Vite automatically proxies backend API calls to port `8080` / `9090`).*
-
-5. To rebuild the production bundle served by Go / Docker:
-   ```bash
-   npm run build
-   # Windows PowerShell: npm.cmd run build
-   ```
-
----
-
-### Option 3: Run with Docker & Docker Hub
-
-#### 🐳 Pull and Run from Docker Hub (No build required!)
-
-Docker Hub Image:
-👉 **[https://hub.docker.com/r/siddhant8840/simnovus-project](https://hub.docker.com/r/siddhant8840/simnovus-project)**
-
+#### 🐳 Pull and Run Pre-built Image from Docker Hub:
 ```bash
-# 1. Pull the pre-built image from Docker Hub
+# Pull from Docker Hub
 docker pull siddhant8840/simnovus-project:latest
 
-# 2. Run the container mapped to port 8080 (or 9090):
-docker run --rm -p 8080:8080 siddhant8840/simnovus-project:latest
-
-# (Or run on port 9090):
+# Run container on port 9090:
 docker run --rm -p 9090:8080 siddhant8840/simnovus-project:latest
 ```
+Open **[http://localhost:9090/](http://localhost:9090/)** in your browser.
 
-Open **[http://localhost:8080/](http://localhost:8080/)** in your browser.
-
----
-
-#### 🛠️ Build and Run Locally with Docker / Docker Compose
-
-If you want to build locally from source:
-
-##### Using Docker Compose:
+#### 🛠️ Build and Run Locally with Docker Compose:
 ```bash
 docker compose up
 ```
-*(Runs automatically on [http://localhost:9090](http://localhost:9090))*
+*(Automatically configured to expose port `9090`).*
 
-##### Using Docker CLI:
+---
+
+### Option 3: React Frontend in Development Mode (Vite HMR)
+
+If you want to modify UI code with live hot-reloading:
 ```bash
-# 1. Build the container image locally:
-docker build -t fleet-monitor .
+# 1. Navigate to frontend directory
+cd frontend
 
-# 2. Run container mapped to port 8080:
-docker run --rm -p 8080:8080 fleet-monitor
+# 2. Install dependencies
+npm install
+
+# 3. Start Vite dev server
+npm run dev
 ```
+Open 👉 **[http://localhost:5173/](http://localhost:5173/)** *(Vite proxies API calls to your active backend).*
 
 ---
 
 ## 🧪 Testing the 30-Second Timeout Rule
 
-To see the 30-second rule in action:
+To observe the 30-second sliding timeout rule in action:
 
 1. Open the dashboard at **[http://localhost:9090/](http://localhost:9090/)**.
-2. In the simulator terminal, stop heartbeats for one device:
+2. In the simulator terminal, stop heartbeats for a device:
    ```text
    stop device-03
    ```
-3. Watch the row for `device-03` on the browser:
-   * The countdown timer counts down from 30 seconds.
-   * At $t = 31\text{s}$, `device-03` immediately flips to **OFFLINE** (red badge).
-   * The fleet metrics at the top update dynamically (`Offline: 1`, `Online: 4`).
-4. To bring `device-03` back online:
-   * Click the **⚡ Heartbeat** button in the browser row, or
-   * Type `start device-03` in the simulator terminal.
-   * `device-03` immediately returns to **ONLINE**!
+3. In the dashboard table, look at the row for `device-03`:
+   * The countdown timer ticks down from 30s.
+   * At $t = 31\text{s}$, `device-03` turns **OFFLINE** (red badge).
+   * Fleet metrics update automatically (`Offline: 1`, `Online: 4`, `Availability: 80%`).
+4. To revive `device-03`:
+   * Click **⚡ Heartbeat** on the UI row, or
+   * Enter `start device-03` in the simulator.
+   * `device-03` instantly transitions back to **ONLINE**!
 
 ---
 
-## 📡 REST API Endpoints
+## 📡 REST API Reference
 
-| Method | Endpoint | Description |
-|---|---|---|
-| `POST` | `/devices` | Register a new device (`{"id": "dev-01", "name": "Sensor 01"}`) |
-| `POST` | `/devices/{id}/heartbeat` | Send heartbeat payload (`{"timestamp": "...", "status": "OK"}`) |
-| `GET` | `/devices` | List all registered devices with computed status |
-| `GET` | `/devices/{id}` | Retrieve individual device status and telemetry |
-| `GET` | `/summary` | Fleet totals: `{"total": 5, "online": 4, "offline": 1}` |
+### 1. Register a Device
+```http
+POST /devices
+Content-Type: application/json
 
-### Example cURL Commands
+{
+  "id": "device-06",
+  "name": "Edge Gateway East"
+}
+```
+**Response (`201 Created`):**
+```json
+{
+  "id": "device-06",
+  "name": "Edge Gateway East",
+  "status": "OFFLINE",
+  "last_heartbeat": null
+}
+```
 
-```bash
-# 1. Register a device:
-curl -X POST http://localhost:9090/devices \
-  -H "Content-Type: application/json" \
-  -d '{"id": "device-06", "name": "Backup Sensor"}'
+---
 
-# 2. Send a Heartbeat:
-curl -X POST http://localhost:9090/devices/device-06/heartbeat \
-  -H "Content-Type: application/json" \
-  -d '{"status": "OK"}'
+### 2. Send Device Heartbeat
+```http
+POST /devices/{id}/heartbeat
+Content-Type: application/json
 
-# 3. View Fleet Summary:
-curl http://localhost:9090/summary
+{
+  "timestamp": "2026-09-30T18:30:00Z",
+  "status": "OK",
+  "cpu_usage": 34.2,
+  "signal_strength": -65
+}
+```
+**Response (`200 OK`):**
+```json
+{
+  "id": "device-06",
+  "name": "Edge Gateway East",
+  "status": "ONLINE",
+  "last_heartbeat": "2026-09-30T18:30:00Z"
+}
+```
+
+---
+
+### 3. List All Devices
+```http
+GET /devices
+```
+**Response (`200 OK`):**
+```json
+[
+  {
+    "id": "device-01",
+    "name": "Sensor Node 01",
+    "status": "ONLINE",
+    "last_heartbeat": "2026-09-30T18:29:55Z"
+  },
+  {
+    "id": "device-06",
+    "name": "Edge Gateway East",
+    "status": "OFFLINE",
+    "last_heartbeat": null
+  }
+]
+```
+
+---
+
+### 4. Get Fleet Summary
+```http
+GET /summary
+```
+**Response (`200 OK`):**
+```json
+{
+  "total": 6,
+  "online": 5,
+  "offline": 1
+}
 ```
 
 ---
 
 ## 🧪 Running Automated Tests
 
-Run the full Go test suite (status boundaries, concurrency safety, validation, and HTTP integration):
+The test suite covers status boundaries ($t=0\text{s}, t=29\text{s}, t=30\text{s}, t=31\text{s}$), race condition safety with 100 concurrent goroutines, and end-to-end HTTP integration:
 
 ```bash
+# Run all Go tests
 go test -v ./...
+
+# Run tests with Go Race Detector
+go test -v -race ./...
 ```
 
 ---
 
-## 📁 Project Architecture
+## 📁 Repository Structure
 
 ```
 EXAM/
 ├── cmd/
-│   ├── server/             # Go HTTP Server & static asset serving
-│   └── simulator/          # Multi-device CLI simulator
+│   ├── server/             # Main HTTP server entrypoint & static asset server
+│   └── simulator/          # Interactive multi-device CLI simulator tool
 ├── internal/
-│   ├── api/                # API router and middleware
-│   └── device/             # Thread-safe in-memory store & status logic
+│   ├── api/                # API helpers, JSON responses, error formats
+│   └── device/             # Thread-safe in-memory store, models, status evaluator & tests
 ├── frontend/
-│   ├── src/                # React dashboard components & real-time clock
-│   └── dist/               # Production-ready compiled web assets
-├── Dockerfile              # Multi-stage production container build
-├── docker-compose.yml      # Docker compose configuration (Port 9090)
+│   ├── src/                # React 18 dashboard, countdown timers, guide side panel
+│   ├── dist/               # Compiled production assets embedded by Go server
+│   ├── package.json        # Frontend dependencies & build scripts
+│   └── vite.config.js      # Vite build & proxy configuration
+├── Dockerfile              # Multi-stage production container build (Node + Go Alpine)
+├── docker-compose.yml      # Single-command container deployment (Port 9090)
 ├── picture.png             # UI Dashboard screenshot
-├── RUN.md                  # Comprehensive run guide
-└── README.md               # Main project documentation
+├── sidd.txt                # Fast execution reference commands
+├── RUN.md                  # Detailed step-by-step running manual
+└── README.md               # Main project documentation & technical specification
 ```
+
+---
+
+## 📄 License & Attribution
+
+Designed and engineered for high-performance IoT device fleet telemetry and observability. Distributed under the MIT License.
